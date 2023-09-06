@@ -313,6 +313,12 @@ def main(
                 region_results = future.result()
                 results.extend(region_results)
                 for service_result in region_results:
+                    try:
+                        if len(service_result["result"][f"{list(service_result['result'].keys())[0]}"]) == 0:
+                            continue
+                    except Exception as exc:
+                        log.error("%r generated an exception: %s" % (region, exc))
+                        log.error(traceback.format_exc())
                     directory = os.path.join(output_dir, timestamp, region)
                     try:
                         os.makedirs(directory, exist_ok=True)
@@ -322,7 +328,11 @@ def main(
                         os.path.join(directory, f"{service_result['service']}.json"),
                         "w",
                     ) as f:
-                        json.dump(service_result["result"], f, cls=DateTimeEncoder)
+                        try:
+                            json.dump(service_result["result"], f, cls=DateTimeEncoder)
+                        except TypeError:
+                            print("failed to convert to json, switching to backup output mode")
+                            f.write(str(service_result["result"]))
             except Exception as exc:
                 log.error("%r generated an exception: %s" % (region, exc))
                 log.error(traceback.format_exc())
